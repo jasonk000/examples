@@ -45,26 +45,36 @@ object DatagramFactory extends EventFactory[DatagramEvent] {
  * we take some shortcuts in assuming the charset of the string
  */
 class BusinessLogicHandler(val output:Disruptor[DatagramEvent]) extends EventHandler[DatagramEvent] {
-  // val charset = Charset.forName("ISO-8859-1")
   val bytes = new Array[Byte](BYTE_ARRAY_SIZE)
+
+  val translator = new EventTranslatorTwoArg[DatagramEvent, Array[Byte], SocketAddress] {
+    def translateTo(outEvent:DatagramEvent, sequence:Long, outputBuff:Array[Byte], address:SocketAddress) {
+      outEvent.buffer.put(outputBuff)
+      outEvent.address = address
+    }
+  }
+
   def onEvent(event:DatagramEvent, sequence:Long, endOfBatch:Boolean) {
     if (event.address != null) {
  
-      // fetch from source
+      // fetch from source ringbuffer to our local "bytes" buffer
       val length = event.buffer.remaining
       event.buffer.get(bytes, 0, length)
 
-      // uppercase
-      // val outputBuff:Array[Byte] = (new String(bytes, charset)).toUpperCase.getBytes(charset)
+      // uppercase to create an output buffer string
       val outputBuff:Array[Byte] = (new String(bytes)).toUpperCase.getBytes()
 
-      // push to target
-      output.publishEvent(new EventTranslator[DatagramEvent] {
+      // push to target - naive general version; creates a new ET for each processed event
+      /* output.publishEvent(new EventTranslator[DatagramEvent] {
         def translateTo(outEvent:DatagramEvent, sequence:Long) {
           outEvent.buffer.put(outputBuff)
           outEvent.address = event.address
         }
-      })
+      }) */
+
+      // push to target - taking advantage of the supported event translators
+      output.publishEvent(translator, outputBuff, event.address)
+
     }
   }
 }

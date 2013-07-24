@@ -28,7 +28,7 @@ object DatagramFactory extends EventFactory[DatagramEvent] {
  */
 class DatagramSendHandler() extends EventHandler[DatagramEvent] {
   val channel = DatagramChannel.open
-  val buffer = ByteBuffer.allocateDirect(BYTE_ARRAY_SIZE)
+  val buffer = ByteBuffer.allocate(BYTE_ARRAY_SIZE)
   def onEvent(event:DatagramEvent, sequence:Long, endOfBatch:Boolean) {
     if (event.address != null) {
       buffer.put(event.buffer, 0, event.length)
@@ -93,12 +93,15 @@ val BYTE_ARRAY_SIZE:Int = 1*1024
   disruptorIn.handleEventsWith(new BusinessLogicHandler(disruptorOut))
   disruptorIn.start
 
-  val buffer = ByteBuffer.allocateDirect(BYTE_ARRAY_SIZE)
+  val buffer = ByteBuffer.allocate(BYTE_ARRAY_SIZE)
   val channel = DatagramChannel.open
   channel.socket.bind(new InetSocketAddress(9999))
   channel.configureBlocking(true)
 
+  println("ready.")
+
   while(true) {
+    buffer.clear
     val socket = channel.receive(buffer)
     buffer.flip
 

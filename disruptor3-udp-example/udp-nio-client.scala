@@ -23,17 +23,17 @@ new Thread(() => {
   val endpoint = new InetSocketAddress("localhost", 9999)
   // clientChannel.connect(endpoint)
   val sentence = "a b c d e f g"
-  val MAX = 100000
+  val MAX = 1000000
   val times = new Array[Long](MAX)
   val sendData = sentence.getBytes
 
-  val buffer = ByteBuffer.allocate(2*1024)
+  val buffer = ByteBuffer.allocateDirect(2*1024)
 
   for(i <- -15000 until MAX) {
-    val start = System.nanoTime
     buffer.clear
     buffer.put(sendData)
     buffer.flip
+    val start = System.nanoTime
     clientChannel.send(buffer, endpoint)
     buffer.clear
     clientChannel.receive(buffer)
