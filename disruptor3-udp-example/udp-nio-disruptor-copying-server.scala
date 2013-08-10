@@ -44,22 +44,32 @@ class DatagramSendHandler() extends EventHandler[DatagramEvent] {
  * Business logic goes here
  */
 class BusinessLogicHandler(val output:Disruptor[DatagramEvent]) extends EventHandler[DatagramEvent] {
+  // translator will be used to write events into the buffer
+  val translator = new ByteToDatagramEventTranslator
+  // get a hold of the ringbuffer, we can't publish direct to Disruptor as the DSL doesn't
+  // provide a garbage-free two-arg publishEvent method
+  val ringbuffer = output.getRingBuffer
+
+  // process events
   def onEvent(event:DatagramEvent, sequence:Long, endOfBatch:Boolean) {
     if (event.address != null) {
       // do the upper case work
       val toSendBytes = new String(event.buffer, 0, event.length).toUpperCase.getBytes
-      // then publish
-      output.publishEvent(new ByteToDatagramEventTranslator(toSendBytes, event.address))
+      // then publish direct to buffer
+      ringbuffer.publishEvent(translator, toSendBytes, event.address)
     }
   }
 }
 
 /**
  * Pushes an output event onto the target disruptor
+ * <p>
+ * This uses the EventTranslatorTwoArg which has a special publishEvent facility on the ringbuffer
+ * to avoid generating any garbage
  */
-class ByteToDatagramEventTranslator(val bytes:Array[Byte], val address:SocketAddress) extends EventTranslator[DatagramEvent] {
-  def translateTo(event:DatagramEvent, sequence:Long) {
-    event.address = this.address
+class ByteToDatagramEventTranslator extends EventTranslatorTwoArg[DatagramEvent, Array[Byte], SocketAddress] {
+   def translateTo(event:DatagramEvent, sequence:Long, bytes:Array[Byte], address:SocketAddress) {
+    event.address = address
     event.length = bytes.length
     System.arraycopy(bytes, 0, event.buffer, 0, bytes.length)
   }
@@ -106,7 +116,7 @@ val BYTE_ARRAY_SIZE:Int = 1*1024
     buffer.flip
 
     // use an anonymous inner class
-    // otherwise we need to do a double copy; once out of the DBB to a byte[], then from a byte[] to a byte[]
+    // otherwise we need to do a double copy; once out of the BB to a byte[], then from a byte[] to a byte[]
     disruptorIn.publishEvent(new EventTranslator[DatagramEvent] {
       def translateTo(event:DatagramEvent,sequence:Long) {
         event.length = buffer.remaining

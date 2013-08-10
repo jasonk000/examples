@@ -6,7 +6,7 @@ import java.net._
 import scala.language.implicitConversions
 implicit def funToRunnable(fun: () => Unit) = new Runnable() { def run() = fun() }
 
-for(i <- 1 to 4)
+for(i <- 1 to 1)
 new Thread(() => {
 
   println("starting query thread " + i)
@@ -29,7 +29,7 @@ new Thread(() => {
       times(i) = (System.nanoTime() - start)
 
     val returned = new String(receivePacket.getData)
-    println("RESPONSE WAS: " + returned)
+    // println("RESPONSE WAS: " + returned)
   }
 
   println("ending query thread " + i)
