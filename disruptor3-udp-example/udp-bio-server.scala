@@ -1,4 +1,4 @@
-#!/usr/bin/scala
+#!/usr/local/bin/scala
 !#
 import java.io._
 import java.net._

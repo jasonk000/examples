@@ -1,0 +1,46 @@
+package examples;
+
+import java.net.*;
+import org.openjdk.jmh.annotations.*;
+
+@State(Scope.Thread)
+public class BioServerTest {
+
+    private static final int PORT = 9999;
+    private static final String ENDPOINT_NAME = "localhost";
+    private static final byte[] SENTENCE_BYTES = "a b c d e f g".getBytes();
+
+    private BioServer server;
+
+    private DatagramSocket clientSocket;
+    private InetAddress endpoint;
+    private byte[] receiveBuffer;
+    private DatagramPacket sendPacket;		   
+    private DatagramPacket receivePacket;
+
+    @Setup
+    public void start() {
+	server = new BioServer(PORT);
+	server.start();
+
+	clientSocket = new DatagramSocket();
+	endpoint = InetAddress.getByName(ENDPOINT_NAME);
+	receiveBuffer = new byte[1024];
+	sendPacket = new DatagramPacket(SENTENCE_BYTES, SENTENCE_BYTES.length, endpoint, PORT);
+
+    }
+
+    @TearDown
+    public void stop() {
+	server.stop();
+    }
+
+    @GenerateMicroBenchmark
+    public String udpRoundtrip() throws IOException {
+        clientSocket.send(sendPacket);
+	clientSocket.receive(receivePacket);
+	System.out.println("got back: " + returned);
+    }
+
+
+}
