@@ -14,7 +14,8 @@ public class ThreadPoolServer {
     public static void main(String[] args) throws Exception {
 	ThreadPoolServer s = new ThreadPoolServer(9999);
 	s.start();
-	System.console().readLine("Press enter to exit.");
+	System.console().readLine("ThreadPoolServer running on port 9999. Press enter to exit.");
+	System.exit(0);
 	s.stop();
     }
 
@@ -65,7 +66,9 @@ public class ThreadPoolServer {
 	public void run() {
 	    try {
 		final DatagramSocket socket = new DatagramSocket();
-		final byte[] sendData = new String(packet.getData()).toUpperCase().getBytes();
+		final String receivedString = new String(packet.getData());
+		System.out.println(receivedString);
+		final byte[] sendData = receivedString.toUpperCase().getBytes();
 		socket.send(new DatagramPacket(sendData,
 					       sendData.length,
 					       packet.getAddress(),

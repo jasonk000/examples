@@ -18,6 +18,7 @@ public class DisruptorServer {
         DisruptorServer d = new DisruptorServer(9999);
         d.start();
         System.console().readLine("DisruptorServer running on port 9999. Press enter to exit.");
+	System.exit(0);
         d.stop();
     }
 
@@ -90,14 +91,14 @@ public class DisruptorServer {
 		    // block to receive and wait for next round
 		    buffer.clear();
 		    final SocketAddress socket = channel.receive(buffer);
+		    buffer.flip();
 		    disruptor.publishEvent(new EventTranslator<DatagramEvent>() {
 			    public void translateTo(DatagramEvent event, long sequence) {
-			    event.length = buffer.remaining();
-			    buffer.get(event.buffer, 0, event.length);
-			    event.address = socket;
+				event.length = buffer.remaining();
+				buffer.get(event.buffer, 0, event.length);
+				event.address = socket;
 			    }
 			});
-		    buffer.flip();
 		}
 	    } catch (IOException e) {
 		throw new RuntimeException(e);
@@ -183,12 +184,17 @@ public class DisruptorServer {
         private final int FLUSH_AFTER_SIZE = 1024;
         private final byte[] NEWLINE = System.getProperty("line.separator").getBytes();
 
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        private final ByteArrayOutputStream out = new ByteArrayOutputStream();
+
+	public PrintToConsoleHandler() {
+	    out.reset();
+	}
+
         public void onEvent(DatagramEvent event, long sequence, boolean endOfBatch) {
             out.write(event.buffer, 0, event.length);
             out.write(NEWLINE, 0, NEWLINE.length);
             if (endOfBatch || (out.size() > FLUSH_AFTER_SIZE)) {
-                System.out.print(out.toString());
+		System.out.print(out.toString());
                 out.reset();
             }
 

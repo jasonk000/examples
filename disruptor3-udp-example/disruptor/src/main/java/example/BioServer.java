@@ -11,7 +11,8 @@ public class BioServer {
     public static void main(String[] args) throws Exception {
         BioServer s = new BioServer(9999);
         s.start();
-        System.console().readLine("Press enter to exit.");
+        System.console().readLine("BioServer running on port 9999. Press enter to exit.");
+	System.exit(0);
 	s.stop();
     }
 
@@ -31,7 +32,9 @@ public class BioServer {
                             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
                             server.receive(receivePacket);
                             //System.out.println("received:");
-                            byte[] sendData = new String(receivePacket.getData()).toUpperCase().getBytes();
+			    final String receivedString = new String(receivePacket.getData());
+			    System.out.println(receivedString);
+                            byte[] sendData = receivedString.toUpperCase().getBytes();
                             //System.out.println("sending:");
                             server.send(new DatagramPacket(sendData,
                                                            sendData.length,
