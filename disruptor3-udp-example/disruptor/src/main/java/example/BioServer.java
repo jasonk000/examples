@@ -8,6 +8,14 @@ public class BioServer {
     Thread t;
     final DatagramSocket server;
 
+    public static void main(String[] args) throws Exception {
+        BioServer s = new BioServer(9999);
+        s.start();
+        System.console().readLine("Press enter to exit.");
+	s.stop();
+    }
+
+
     public BioServer(int port) throws SocketException {
 	this.server = new DatagramSocket(port);
     }

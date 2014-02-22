@@ -30,7 +30,27 @@
       <version>0.3.1</version>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>com.lmax</groupId>
+      <artifactId>disruptor</artifactId>
+      <version>3.2.0</version>
+    </dependency>
   </dependencies>
+
+  <profiles>
+    <profile>
+      <id>disruptor</id>
+      <activation><property><name>disruptor</name></property></activation>
+      <build><plugins><plugin>
+	<groupId>org.codehaus.mojo</groupId>
+	<artifactId>exec-maven-plugin</artifactId>
+	<version>1.1</version>
+	<configuration>
+	  <mainClass>example.DisruptorServer</mainClass>
+	</configuration>
+      </plugin></plugins></build>
+    </profile>
+  </profiles>
 
   <build>
     <plugins>

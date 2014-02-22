@@ -11,6 +11,14 @@ public class ThreadPoolServer {
     private final DatagramSocket server;
     private final ExecutorService executor;
 
+    public static void main(String[] args) throws Exception {
+	ThreadPoolServer s = new ThreadPoolServer(9999);
+	s.start();
+	System.console().readLine("Press enter to exit.");
+	s.stop();
+    }
+
+
     public ThreadPoolServer(int port) throws SocketException {
         this.server = new DatagramSocket(port);
 	this.executor = Executors.newCachedThreadPool();
