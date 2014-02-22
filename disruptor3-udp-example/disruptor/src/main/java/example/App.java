@@ -13,28 +13,24 @@ public class App
     public static void main( String[] args ) throws Exception
     {
 
-	System.out.println("---- BioServer ----");
-        BioServer server = new BioServer(9999);
-        server.start();
-        runClient();
-        server.stop();
+        runClient(args[0]);
 
     }
 
-    private static void runClient() throws Exception {
+    private static void runClient(String host) throws Exception {
         // run warmup
         System.out.println("warmup:");
-        runClientOnce("localhost", 9999, 30*1000);
+        runClientOnce(host, 9999, 20*1000);
         Thread.sleep(2000);
 
         // run client
         System.out.println("running:");
         final long start = System.currentTimeMillis();
-        runClientOnce("localhost", 9999, 100*1000);
-        runClientOnce("localhost", 9999, 100*1000);
-        runClientOnce("localhost", 9999, 100*1000);
-        runClientOnce("localhost", 9999, 100*1000);
-        runClientOnce("localhost", 9999, 100*1000);
+        runClientOnce(host, 9999, 10*1000);
+        runClientOnce(host, 9999, 10*1000);
+        runClientOnce(host, 9999, 10*1000);
+        runClientOnce(host, 9999, 10*1000);
+        runClientOnce(host, 9999, 10*1000);
 
         final long end = System.currentTimeMillis();
         System.out.println("ran for (millis): " + (end-start));
