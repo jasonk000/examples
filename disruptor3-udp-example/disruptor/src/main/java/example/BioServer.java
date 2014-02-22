@@ -1,5 +1,4 @@
 package example;
-
 import java.io.*;
 import java.net.*;
 import java.util.Arrays;
@@ -32,6 +31,11 @@ public class BioServer {
                                                            receivePacket.getPort()));
                             //System.out.println("sent.");
                         }
+		    } catch (SocketException e) {
+			if (!e.toString().equals("java.net.SocketException: Socket closed")) {
+			    System.out.println(e);
+			    e.printStackTrace();
+			}
                     } catch (Exception e) {
                         System.out.println(e);
                         e.printStackTrace();

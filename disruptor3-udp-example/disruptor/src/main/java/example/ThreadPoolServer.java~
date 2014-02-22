@@ -1,0 +1,54 @@
+package example;
+import java.io.*;
+import java.net.*;
+
+public class ThreadPoolServer {
+
+    private final DatagramSocket server;
+    private final ExecutorService executor;
+
+    public ThreadPoolServer(int port) throws SocketException {
+        this.server = new DatagramSocket(port);
+	this.executor = new Executors.newCachedThreadPool();
+    }
+
+    public void start() throws Exception {
+	executor.submit(new Runnable() {
+		public void run() {
+		    try {
+			while(true) {
+			    byte[] receiveData = new byte[1024];
+			    DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
+			    server.receive(receivePacket);
+			    executor.submit(new PacketResponder(receivePacket));
+			}
+		    } catch (SocketException e) {
+			if (!e.toString().equals("java.net.SocketException: Socket closed")) {
+			    System.out.println(e);
+			    e.printStackTrace();
+			}
+		    } catch (Exception e) {
+			System.out.println(e);
+			e.printStackTrace();
+		    }
+		}});
+	       	    
+    }
+
+    private class PacketResponder {
+	private final DatagramPacket packet;
+	public PacketResponder(DatagramPacket packet) {
+	    this.packet = packet;
+	}
+
+	public void run() {
+	    final DatagramSocket socket = new DatagramSocket();
+	    final byte[] sendData = new String(receivePacket.getData()).toUpperCase().getBytes();
+	    socket.send(new DatagramPacket(sendData,
+					   sendData.length,
+					   receivePacket.getAddress(),
+					   receivePacket.getPort()));
+	}
+    }
+	
+		  
