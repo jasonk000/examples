@@ -25,22 +25,21 @@ public class BioServer {
         // set up server
         t = new Thread(new Runnable() {
                 public void run() {
+		    Writer writer = null;;
                     try {
+                        writer = new OutputStreamWriter(new FileOutputStream("output-log.txt"), "utf-8");
                         while(true) {
-                            //System.out.println("receiving:");
                             byte[] receiveData = new byte[1024];
                             DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
                             server.receive(receivePacket);
-                            //System.out.println("received:");
 			    final String receivedString = new String(receivePacket.getData());
-			    System.out.println(receivedString);
+			    // writer.write(receivedString);
+			    // writer.write("\n");
                             byte[] sendData = receivedString.toUpperCase().getBytes();
-                            //System.out.println("sending:");
                             server.send(new DatagramPacket(sendData,
                                                            sendData.length,
                                                            receivePacket.getAddress(),
                                                            receivePacket.getPort()));
-                            //System.out.println("sent.");
                         }
 		    } catch (SocketException e) {
 			if (!e.toString().equals("java.net.SocketException: Socket closed")) {
@@ -50,7 +49,14 @@ public class BioServer {
                     } catch (Exception e) {
                         System.out.println(e);
                         e.printStackTrace();
-                    }
+                    } finally {
+			try {
+			    if (writer != null) writer.close();
+			} catch(IOException e) {
+			    System.out.println(e);
+			    e.printStackTrace();
+			}
+		    }
 		}});
 	t.start();
 

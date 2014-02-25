@@ -28,12 +28,14 @@ public class ThreadPoolServer {
     public void start() throws Exception {
 	t = new Thread(new Runnable() {
 		public void run() {
+		    Writer writer = null;
 		    try {
+			writer = new OutputStreamWriter(new FileOutputStream("output-log.txt"), "utf-8");
 			while(true) {
 			    byte[] receiveData = new byte[1024];
 			    DatagramPacket receivePacket = new DatagramPacket(receiveData, receiveData.length);
 			    server.receive(receivePacket);
-			    executor.submit(new PacketResponder(receivePacket));
+			    executor.submit(new PacketResponder(receivePacket, writer));
 			}
 		    } catch (SocketException e) {
 			if (!e.toString().equals("java.net.SocketException: Socket closed")) {
@@ -43,7 +45,14 @@ public class ThreadPoolServer {
 		    } catch (Exception e) {
 			System.out.println(e);
 			e.printStackTrace();
-		    }
+		    } finally {
+                        try {
+                            if (writer != null) writer.close();
+                        } catch(IOException e) {
+                            System.out.println(e);
+                            e.printStackTrace();
+                        }
+                    }
 		}});
 	t.start();	       	    
     }
@@ -59,15 +68,18 @@ public class ThreadPoolServer {
 
     private class PacketResponder implements Runnable {
 	private final DatagramPacket packet;
-	public PacketResponder(DatagramPacket packet) {
+	private final Writer writer;
+	public PacketResponder(DatagramPacket packet, Writer writer) {
 	    this.packet = packet;
+	    this.writer = writer;
 	}
 
 	public void run() {
 	    try {
 		final DatagramSocket socket = new DatagramSocket();
 		final String receivedString = new String(packet.getData());
-		System.out.println(receivedString);
+		// writer.write(receivedString);
+		// writer.write("\n");
 		final byte[] sendData = receivedString.toUpperCase().getBytes();
 		socket.send(new DatagramPacket(sendData,
 					       sendData.length,

@@ -41,20 +41,22 @@ public class DisruptorServer {
 
         // start the transmit path
         Disruptor disruptorOut = new Disruptor<DatagramEvent>(
-            DatagramEvent.EVENT_FACTORY, RING_SIZE, executor, ProducerType.SINGLE, new SleepingWaitStrategy());
+            DatagramEvent.EVENT_FACTORY, RING_SIZE, executor, ProducerType.SINGLE, new BlockingWaitStrategy());
         disruptorOut.handleEventsWith(new DatagramSendHandler());
         disruptorOut.start();
 
         // now start business logic step
         Disruptor disruptorIn = new Disruptor<DatagramEvent>(
-            DatagramEvent.EVENT_FACTORY, RING_SIZE, executor, ProducerType.SINGLE, new SleepingWaitStrategy());
-        disruptorIn.handleEventsWith(new PrintToConsoleHandler(), new BusinessLogicHandler(disruptorOut));
+            DatagramEvent.EVENT_FACTORY, RING_SIZE, executor, ProducerType.SINGLE, new BlockingWaitStrategy());
+        // disruptorIn.handleEventsWith(new PrintToConsoleHandler(), new BusinessLogicHandler(disruptorOut));
+	disruptorIn.handleEventsWith(new BusinessLogicHandler(disruptorOut));
         disruptorIn.start();
 
         // and now the receive path [single thread]
         channel = DatagramChannel.open();
         channel.socket().bind(new InetSocketAddress(port));
         channel.configureBlocking(true);
+      	// channel.configureBlocking(false);
         t = new Thread(new ReceiveThread(channel, disruptorIn));
         t.start();
 
@@ -91,6 +93,7 @@ public class DisruptorServer {
 		    // block to receive and wait for next round
 		    buffer.clear();
 		    final SocketAddress socket = channel.receive(buffer);
+                    // if (socket == null) continue;
 		    buffer.flip();
 		    disruptor.publishEvent(new EventTranslator<DatagramEvent>() {
 			    public void translateTo(DatagramEvent event, long sequence) {
@@ -185,16 +188,26 @@ public class DisruptorServer {
         private final byte[] NEWLINE = System.getProperty("line.separator").getBytes();
 
         private final ByteArrayOutputStream out = new ByteArrayOutputStream();
+	private final Writer writer;
 
-	public PrintToConsoleHandler() {
+	public PrintToConsoleHandler() throws IOException {
 	    out.reset();
+	    writer = new OutputStreamWriter(new FileOutputStream("output-log.txt"), "utf-8");
+
 	}
 
         public void onEvent(DatagramEvent event, long sequence, boolean endOfBatch) {
             out.write(event.buffer, 0, event.length);
             out.write(NEWLINE, 0, NEWLINE.length);
             if (endOfBatch || (out.size() > FLUSH_AFTER_SIZE)) {
-		System.out.print(out.toString());
+		try {
+		    writer.write(out.toString());
+		} catch (IOException e) {
+		    System.out.println("failed to write: ");
+		    System.out.println(e);
+		    e.printStackTrace();
+		    throw new RuntimeException(e);
+		}
                 out.reset();
             }
 
