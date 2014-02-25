@@ -33,7 +33,9 @@ public class App
                     try{ 
                     // run warmup
                     System.out.println(Thread.currentThread().getName() + ": warmup:");
-                    runClientOnce(host, 9999, 20*1000);
+                    runClientOnce(host, 9999, 12*1000);
+                    Thread.sleep(2000);
+                    runClientOnce(host, 9999, 12*1000);
                     Thread.sleep(2000);
 
                     // run client
@@ -42,12 +44,11 @@ public class App
                     runClientOnce(host, 9999, 10*1000);
                     runClientOnce(host, 9999, 10*1000);
                     runClientOnce(host, 9999, 10*1000);
-                    runClientOnce(host, 9999, 10*1000);
-                    runClientOnce(host, 9999, 10*1000);
 
                     final long end = System.currentTimeMillis();
                     System.out.println(Thread.currentThread().getName() + ": ran for (millis): " + (end-start));
                     } catch (Exception e) { 
+			System.out.println(e);
                         throw new RuntimeException(e);
                     }
                 }
@@ -58,6 +59,7 @@ public class App
 
     private static void runClientOnce(String endpointName, int port, int iterations) throws Exception {
 	final DatagramSocket clientSocket = new DatagramSocket();
+	clientSocket.setSoTimeout(10000);
 	final InetAddress endpoint = InetAddress.getByName(endpointName);
 	final long[] times = new long[iterations];
 	final byte[] receiveBuffer = new byte[1024];
