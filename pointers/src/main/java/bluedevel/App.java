@@ -18,6 +18,7 @@ import java.util.Map;
 * value is detected, flag it and exit the app.
 *
 * YMMV, especially regarding UseCompressedOops; jol toNativeAddress not quite working yet.
+* In particular, JOL is only good for zero-based compressed oops.
 */
 public class App {
 
