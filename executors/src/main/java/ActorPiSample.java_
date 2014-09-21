@@ -1,0 +1,110 @@
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.*;
+import akka.actor.*;
+import akka.routing.RoundRobinRouter;
+import com.typesafe.config.ConfigFactory;
+
+public class ActorPiSample {
+ 
+    public static class PiActor extends Actor {
+        public void calculatePiFor(int start, int nrOfElements, ChannelActor result ) {
+            double acc = 0.0;
+            for (int i = start * nrOfElements; i <= ((start + 1) * nrOfElements - 1); i++) {
+                acc += 4.0 * (1 - (i % 2) * 2) / (2 * i + 1);
+            }
+            result.receiveResult(acc);
+        }
+    }
+ 
+    public static class PiStriper extends Actor {
+        PiActor actors[];
+ 
+        public void run(int numActors, int iterationSize, int numJobs, final ChannelActor resultListener ) {
+            final long tim = System.currentTimeMillis();
+            actors = new PiActor[numActors];
+            for (int i = 0; i < actors.length; i++) {
+                actors[i] = SpawnActor(PiActor.class);
+            }
+ 
+            final int iterPerAct = numJobs / numActors;
+            final int iterSum = iterPerAct * actors.length;
+ 
+            final ChannelActor endResult = Actors.QueuedChannel(new ChannelReceiver<Double>() {
+                double sum = 0;
+                int count = 0;
+ 
+                @Override
+                public void receiveResult(Double result) {
+                    count++;
+                    sum += result;
+                    if (count == iterSum) {
+                        resultListener.receiveResult(sum);
+                        done();
+                        PiStriper.this.getDispatcher().shutDown();
+                        for (int i = 0; i < actors.length; i++) {
+                            PiActor actor = actors[i];
+                            actor.getDispatcher().shutDown();
+                        }
+                    }
+                }
+            });
+ 
+            int iteri = 0;
+            for (int i = 0; i < actors.length; i++) {
+                for ( int ii = 0; ii < iterPerAct; ii++ ) {
+                    actors[iteri%actors.length].calculatePiFor(iteri, iterationSize, endResult /*subRes*/);
+                    iteri++;
+                }
+            }
+            System.out.println("POK iteri " + iteri);
+        }
+ 
+    }
+ 
+    static long calcPi(final int numMessages, int step, final int numActors) throws InterruptedException {
+        final long tim = System.currentTimeMillis();
+        final CountDownLatch latch = new CountDownLatch(1); // to be able to wait for finish
+        final AtomicLong time = new AtomicLong(0);
+ 
+        ChannelActor resultReceiver = Actors.Channel(
+                new ChannelReceiver<Double>() {
+                    public void receiveResult(Double pi) {
+                        long l = System.currentTimeMillis() - tim;
+                        System.out.println("T = " + numActors + " pi: " + pi + " " + l + " disp:" + de.ruedigermoeller.abstraktor.impl.Dispatcher.instanceCount.get());
+                        time.set(l);
+                        done();
+                        latch.countDown();
+                    }
+                });
+ 
+        PiStriper piStriper = Actors.AsActor(PiStriper.class);
+        piStriper.run(numActors,step, numMessages, resultReceiver );
+ 
+        // wait until done
+        latch.await();
+        return time.get();
+    }
+ 
+    public static void main( String arg[] ) throws InterruptedException {
+        final int numMessages = 1000000;
+        final int step = 100;
+        final int MAX_ACT = 8;
+        String results[] = new String[MAX_ACT];
+ 
+        for ( int numActors = 1; numActors <= MAX_ACT; numActors+=1 ) {
+            long sum = 0;
+            for ( int ii=0; ii < 20; ii++) {
+                long res = calcPi(numMessages, step, numActors);
+                if ( ii >= 10 ) {
+                    sum+=res;
+                }
+            }
+            results[numActors-1] = "average "+numActors+" threads : "+sum/10;
+        }
+ 
+        for (int i = 0; i < results.length; i++) {
+            String result = results[i];
+            System.out.println(result);
+        }
+    }
+}
