@@ -4,9 +4,11 @@ import java.util.concurrent.*;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.locks.LockSupport;
+// import org.jctools.queues.MessagePassingQueue;
 import java.util.Queue;
+import org.jctools.queues.SpmcArrayQueue;
 
-public class CustomExecutorSpmcPutParkTakePark {
+public class CustomExecutorJcToolsSpmc {
  
     static double calculatePiFor(int slice, int nrOfIterations) {
         double acc = 0.0;
@@ -21,7 +23,7 @@ public class CustomExecutorSpmcPutParkTakePark {
         final int numMessages = 1000000;
         final int step = 100;
 
-        final ExecutorService test = new QueueExecutor(numThreads);
+        final ExecutorService test = new JctoolsExecutor(numThreads);
         final AtomicInteger latch = new AtomicInteger(numMessages);
         final AtomicReference<Double> result = new AtomicReference<>(0.0);
         final AtomicLong timSum = new AtomicLong(0);
@@ -29,6 +31,9 @@ public class CustomExecutorSpmcPutParkTakePark {
         final long tim = System.currentTimeMillis();
         for ( int i= 0; i< numMessages; i++) {
             final int finalI = i;
+            /*while ( ((ThreadPoolExecutor)test).getQueue().size() > 40000 ) {
+                LockSupport.parkNanos(100);
+		} */
             test.execute(new Runnable() {
                 public void run() {
                     double res = calculatePiFor(finalI, step);
@@ -76,92 +81,29 @@ public class CustomExecutorSpmcPutParkTakePark {
           
     }
 
-    private static class QueueExecutor<T> implements ExecutorService {
+    private static class JctoolsExecutor<T> implements ExecutorService {
 
         private volatile boolean running;
         private volatile boolean stopped;
         private final int threadCount;
-        private final SpmcQueue queue;
+        private final Queue<Runnable> queue;
     	private final Thread[] threads;
 
-        public QueueExecutor(int threadCount) {
+        public JctoolsExecutor(int threadCount) {
             this.threadCount = threadCount;
-	    this.queue = new SpmcQueue((int) Math.pow(2, 10));
+            this.queue = new SpmcArrayQueue((int) Math.pow(2,18));
             running = true;
             stopped = false;
             threads = new Thread[threadCount];
             for(int i = 0; i < threadCount; i++) {
                 threads[i] = new Thread(new Worker());
-		threads[i].start();
+                threads[i].start();
             }
         }
 
         public void execute(Runnable runnable) {
-            try {
-                queue.put(runnable);
-	    } catch (InterruptedException ie) {
-	        throw new RuntimeException(ie);
-	    }
-	}
-
-        private class SpmcQueue { //implements BlockingQueue<Runnable> {
-            private final Runnable[] buffer;
-            
-            private final int capacity;
- 
-            // need a counter that producer can lazyset publish to for write
-            AtomicLong nextSlotToWrite = new AtomicLong(1);
-             
-            // need a counter that consumers can use to track where 
-            // it is safe to read from 
-            AtomicLong lastConsumed = new AtomicLong(0);
-
-            public SpmcQueue(int capacity) {
-                this.capacity = capacity;
-                this.buffer = new Runnable[capacity];
-            }
-
-            public void put(Runnable r) throws InterruptedException {
-                while (true) {
-                    long toWrite = nextSlotToWrite.get();
-                    if (toWrite < (lastConsumed.get() + capacity)) {
-                        buffer[(int) (toWrite % capacity)] = r;
-                        nextSlotToWrite.incrementAndGet();
-                        // System.out.println("put() win: slot=" + slot + "; lastConsumed=" + lastConsumed.get());
-                        break;
-                    } else {
-                        // System.out.println("put() fail: slot=" + slot + "; lastConsumed=" + lastConsumed.get());
-                        // no space in queue, sleep
-                        LockSupport.parkNanos(1);
-                    }
-                }
-                // throw new InterruptedException();
-            }
-            public Runnable take() throws InterruptedException {
-                while(!Thread.interrupted()) {
-                    long lastFilled = nextSlotToWrite.get() - 1;
-                    long lastConsumedCache = lastConsumed.get();
-                    if (lastConsumedCache < lastFilled) {
-                        // fetch the value from buffer first, to avoid a wrap race
-                        int bufferslot = (int) ((lastConsumedCache + 1) % capacity);
-                        Runnable r = buffer[bufferslot];
-                        // attempt to cas
-                        boolean casWon = lastConsumed.compareAndSet(
-                            lastConsumedCache, lastConsumedCache + 1); 
-                        // if cas failed, then we are not the owner, so we need to try again
-                        if (casWon) {
-                            // System.out.println("take() pass: got data lastFilled=" + lastFilled + "; lastConsumedCache=" + lastConsumedCache);
-                            return r;
-                        } else {
-                            // System.out.println("take() cas fail");
-                        }
-                    } else {
-                        // System.out.println("take() fail: waiting for data lastFilled=" + lastFilled + "; lastConsumedCache=" + lastConsumedCache);
-                        // cas failed, do not sleep
-                        LockSupport.parkNanos(1);
-                    }
-                }
-                throw new InterruptedException();
+            while (!queue.offer(runnable)) {
+                LockSupport.parkNanos(1);
             }
         }
 
@@ -169,11 +111,11 @@ public class CustomExecutorSpmcPutParkTakePark {
             public void run() {
                 while(running) {
                     Runnable runnable = null;
-                    try {
-                        runnable = queue.take();
-                    } catch (InterruptedException ie) {
-                        // was interrupted - just go round the loop again,
-                        // if running = false will cause it to exit
+                    while (true) {
+                        if (Thread.interrupted()) return;
+                        runnable = queue.poll();
+                        if (runnable != null) break;
+                        LockSupport.parkNanos(1);
                     }
                     try {
                         if (runnable != null) { 

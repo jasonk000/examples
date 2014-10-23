@@ -35,7 +35,7 @@
             <argument>-Xmx1g</argument>
             <argument>-classpath</argument>
             <classpath/>
-            <argument>CustomExecutorSpmcPpTpPaddedCacheGet</argument>
+            <argument>CustomExecutorLbqNoBlock</argument>
           </arguments>
         </configuration>
       </plugin>
@@ -55,7 +55,11 @@
       <artifactId>disruptor</artifactId>
       <version>3.2.0</version>
     </dependency>
-
+    <dependency><!-- Gimme some lock free awesomeness -->
+        <groupId>org.jctools</groupId>
+        <artifactId>jctools-core</artifactId>
+        <version>1.0</version>
+    </dependency><!-- Hell yeah! -->
   </dependencies>
 
 <properties>

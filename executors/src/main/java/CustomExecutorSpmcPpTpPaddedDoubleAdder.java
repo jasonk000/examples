@@ -83,7 +83,7 @@ public class CustomExecutorSpmcPpTpPaddedDoubleAdder {
 
         public QueueExecutor(int threadCount) {
             this.threadCount = threadCount;
-	    this.queue = new SpmcQueue(2^18);
+	    this.queue = new SpmcQueue((int) Math.pow(2, 10));
             running = true;
             stopped = false;
             threads = new Thread[threadCount];

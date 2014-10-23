@@ -29,9 +29,6 @@ public class CustomExecutorLbqNoBlock {
         final long tim = System.currentTimeMillis();
         for ( int i= 0; i< numMessages; i++) {
             final int finalI = i;
-            /*while ( ((ThreadPoolExecutor)test).getQueue().size() > 40000 ) {
-                LockSupport.parkNanos(100);
-		} */
             test.execute(new Runnable() {
                 public void run() {
                     double res = calculatePiFor(finalI, step);
@@ -87,12 +84,14 @@ public class CustomExecutorLbqNoBlock {
         private final Queue<Runnable> queue;
     	private final Thread[] threads;
 
+        private final int MAX_QUEUE_SIZE = (int) Math.pow(2, 18);
+
         public LtqExecutor(int threadCount) {
             this.threadCount = threadCount;
-	    // this.queue = new LinkedTransferQueue();
-            // this.queue = new ArrayBlockingQueue(2^18);
-            // this.queue = new ConcurrentLinkedQueue();
-            this.queue = new LinkedBlockingQueue();
+            this.queue = new LinkedTransferQueue();
+     //        this.queue = new ArrayBlockingQueue(MAX_QUEUE_SIZE);
+     //        this.queue = new ConcurrentLinkedQueue();
+            // this.queue = new LinkedBlockingQueue();
             running = true;
             stopped = false;
             threads = new Thread[threadCount];
@@ -103,6 +102,9 @@ public class CustomExecutorLbqNoBlock {
         }
 
         public void execute(Runnable runnable) {
+            while (queue.size() > (MAX_QUEUE_SIZE) ) { // cap the size
+                // LockSupport.parkNanos(1);
+            }
             while (!queue.offer(runnable)) {
                 LockSupport.parkNanos(1);
                 /* try {
