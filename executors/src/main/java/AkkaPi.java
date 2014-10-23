@@ -181,7 +181,7 @@ public class AkkaPi {
                 "akka {\n" +
                         "  actor.default-dispatcher {\n" +
                         "      fork-join-executor {\n" +
-                        "        parallelism-min = 2\n" +
+                        "        parallelism-min = "+nrOfWorkers+"\n" +
                         "        parallelism-factor = 0.4\n" +
                         "        parallelism-max = "+nrOfWorkers+"\n" +
                         "      }\n" +
